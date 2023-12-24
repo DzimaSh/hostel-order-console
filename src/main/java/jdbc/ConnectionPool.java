@@ -1,5 +1,7 @@
 package jdbc;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.sql.Connection;
@@ -9,6 +11,7 @@ import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+@Slf4j
 public class ConnectionPool implements AutoCloseable {
     private final Properties properties;
     private final List<Connection> connections;
@@ -24,14 +27,17 @@ public class ConnectionPool implements AutoCloseable {
         try (InputStream input = getClass().getClassLoader().getResourceAsStream(propertiesFile)) {
             properties.load(input);
         } catch (IOException e) {
+            log.error("Error loading database properties", e);
             throw new SQLException("Error while loading the db", e);
         }
         return properties;
     }
 
     private void initializePool(int initialSize) throws SQLException {
+        log.debug("Initialize connection pool. Open " + initialSize + " connections...");
         for (int i = 0; i < initialSize; i++) {
             Connection connection = createConnection();
+            log.trace("Connection " + i + " was opened...");
             connections.add(connection);
         }
     }
@@ -43,7 +49,8 @@ public class ConnectionPool implements AutoCloseable {
             String password = properties.getProperty("db.password");
             return DriverManager.getConnection(url, username, password);
         } catch (SQLException e) {
-            throw new SQLException("Error while loading the db", e);
+            log.error("Error creating database connection", e);
+            throw e;
         }
     }
 
@@ -57,10 +64,17 @@ public class ConnectionPool implements AutoCloseable {
         return connections.remove(connections.size() - 1);
     }
 
-    public synchronized void close() throws SQLException {
+    public synchronized void close() throws IOException {
         for (Connection connection : connections) {
-            if (connection != null && !connection.isClosed()) {
-                connection.close();
+            if (connection != null) {
+                try {
+                    if (!connection.isClosed()) {
+                        connection.close();
+                    }
+                } catch (SQLException e) {
+                    log.error("Error closing connection", e);
+                    throw new IOException("Error closing connection", e);
+                }
             }
         }
 
