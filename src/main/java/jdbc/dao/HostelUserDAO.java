@@ -9,6 +9,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class HostelUserDAO {
+
+    public final static String SELECT_BY_ID_SQL = "SELECT * FROM hostel_user WHERE id = ?";
     private final Connection connection;
 
     public HostelUserDAO(Connection connection) {
@@ -28,8 +30,7 @@ public class HostelUserDAO {
     }
 
     public HostelUser getHostelUserById(Long id) throws SQLException {
-        String sql = "SELECT * FROM hostel_user WHERE id = ?";
-        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (PreparedStatement statement = connection.prepareStatement(SELECT_BY_ID_SQL)) {
             statement.setLong(1, id);
             ResultSet resultSet = statement.executeQuery();
             if (resultSet.next()) {

@@ -15,6 +15,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Scanner;
 import java.util.Set;
 
@@ -42,7 +43,6 @@ public class HostelManager {
 
     public void run() {
         while (true) {
-            System.out.println("\n\n");
             try {
                 if (securityHolder.getCurrentUser() == null) {
                     showLoginMenu();
@@ -77,7 +77,11 @@ public class HostelManager {
                 seeProfilePage();
                 break;
             case 2:
-                payForOrder();
+                try {
+                    payForOrder();
+                } catch (IllegalStateException e) {
+                    System.out.println(e.getMessage());
+                }
                 break;
 //            case 2:
 //                approveOrder();
@@ -95,6 +99,8 @@ public class HostelManager {
             default:
                 System.out.println("Invalid command.");
         }
+        System.out.println("Press Enter to proceed...");
+        scanner.nextLine();
     }
 
     private boolean loginMenu(int choice) throws SQLException {
@@ -108,6 +114,8 @@ public class HostelManager {
             default:
                 System.out.println("Invalid command.");
         }
+        System.out.println("Press Enter to proceed...");
+        scanner.nextLine();
 
         return false;
     }
@@ -224,6 +232,28 @@ public class HostelManager {
         Long orderIdToPay = scanLong();
 
         HostelOrder orderToPay = hostelOrderDAO.getHostelOrderById(orderIdToPay);
+
+        if (Objects.isNull(orderToPay.getBill())) {
+            log.error("Cannot proceed payment! Bill is null");
+            throw new NullPointerException("Bill is null");
+        } else if (orderToPay.getBill().getStatus().equals(Bill.Status.PAYED)) {
+            log.error("Trying to pay. Already Payed bill");
+            throw new IllegalStateException("Bill is already payed");
+        }
+
+        System.out.println(orderToPay.details());
+        System.out.println("Bill Amount: " + orderToPay.getBill().getBillPrice());
+
+        System.out.println("Press Enter to proceed...");
+        scanner.nextLine();
+
+        System.out.println("Are you sure (Y/N)?");
+        String confirmation = scanner.nextLine();
+        if (!confirmation.equalsIgnoreCase("Y")) {
+            System.out.println("Payment cancelled.");
+            return;
+        }
+
         orderToPay.setStatus(HostelOrder.Status.PAYED);
         hostelOrderDAO.updateHostelOrder(orderToPay);
         System.out.println("Nice! You have payed your order:)");

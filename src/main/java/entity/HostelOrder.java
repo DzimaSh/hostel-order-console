@@ -51,4 +51,18 @@ public class HostelOrder extends DateRangeEntity {
     public Long countPeriodOfOrder() {
         return ChronoUnit.DAYS.between(startDate, endDate);
     }
+
+    public String details() {
+        return "Order Details:\n" +
+                "-------------\n" +
+                "Order ID: " + id + "\n" +
+                "Client Name: " + client.getName() + "\n" +
+                "Room Type: " + desiredRoomType + "\n" +
+                "Number of Beds: " + desiredBeds + "\n" +
+                "Start Date: " + startDate + "\n" +
+                "End Date: " + endDate + "\n" +
+                "Status: " + status + "\n" +
+                "Total Days: " + countPeriodOfOrder() + "\n" +
+                "Bill Amount: " + (bill != null ? bill.getBillPrice() : "Not available");
+    }
 }

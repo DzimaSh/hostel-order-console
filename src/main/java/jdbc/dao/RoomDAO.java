@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class RoomDAO {
+    public final static String SELECT_BY_ID_SQL = "SELECT * FROM room WHERE id = ?";
     private final Connection connection;
 
     public RoomDAO(Connection connection) {
@@ -29,8 +30,7 @@ public class RoomDAO {
     }
 
     public Room getRoomById(Long id) throws SQLException {
-        String sql = "SELECT * FROM room WHERE id = ?";
-        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (PreparedStatement statement = connection.prepareStatement(SELECT_BY_ID_SQL)) {
             statement.setLong(1, id);
             ResultSet resultSet = statement.executeQuery();
             if (resultSet.next()) {

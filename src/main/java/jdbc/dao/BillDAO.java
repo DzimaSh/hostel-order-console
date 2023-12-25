@@ -1,6 +1,7 @@
 package jdbc.dao;
 
 import entity.Bill;
+import entity.HostelOrder;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -12,6 +13,7 @@ import java.util.List;
 import java.util.Set;
 
 public class BillDAO {
+    public final static String SELECT_BY_ID_SQL = "SELECT * FROM bill WHERE id = ?";
     private final Connection connection;
     private final HostelOrderDAO hostelOrderDAO;
 
@@ -21,19 +23,15 @@ public class BillDAO {
     }
 
     public void createBill(Bill bill) throws SQLException {
-        String sql = "INSERT INTO bill (id, bill_price, status) VALUES (?, ?, ?)";
+        String sql = "INSERT INTO bill (bill_price, status) VALUES (?, ?)";
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setLong(1, bill.getId());
-            statement.setLong(2, bill.getHostelOrder().getId());
-            statement.setDouble(3, bill.getBillPrice());
-            statement.setString(4, bill.getStatus().name());
+            prepareStatement(bill, statement);
             statement.executeUpdate();
         }
     }
 
     public Bill getBillById(Long id) throws SQLException {
-        String sql = "SELECT * FROM bill WHERE id = ?";
-        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (PreparedStatement statement = connection.prepareStatement(SELECT_BY_ID_SQL)) {
             statement.setLong(1, id);
             ResultSet resultSet = statement.executeQuery();
             if (resultSet.next()) {
@@ -59,9 +57,8 @@ public class BillDAO {
     public void updateBill(Bill bill) throws SQLException {
         String sql = "UPDATE bill SET bill_price = ?, status = ? WHERE id = ?";
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setDouble(2, bill.getBillPrice());
-            statement.setString(3, bill.getStatus().name());
-            statement.setLong(4, bill.getId());
+            prepareStatement(bill, statement);
+            statement.setLong(3, bill.getId());
             statement.executeUpdate();
         }
     }
@@ -94,5 +91,25 @@ public class BillDAO {
                 resultSet.getDouble("bill_price"),
                 Bill.Status.valueOf(resultSet.getString("status"))
         );
+    }
+
+    private void prepareStatement(Bill bill, PreparedStatement statement) throws SQLException {
+        statement.setDouble(1, bill.getBillPrice());
+        statement.setString(2, bill.getStatus().name());
+    }
+
+    protected static Bill prepareBillInject(Connection connection, Long billId) throws SQLException {
+        Bill bill = null;
+        PreparedStatement statement = connection.prepareStatement(BillDAO.SELECT_BY_ID_SQL);
+        statement.setLong(1, billId);
+        ResultSet resultSet = statement.executeQuery();
+        if (resultSet.next()) {
+            bill = new Bill();
+            bill.setId(resultSet.getLong("id"));
+            bill.setBillPrice(resultSet.getDouble("bill_price"));
+            bill.setStatus(Bill.Status.valueOf(resultSet.getString("status")));
+        }
+
+        return bill;
     }
 }

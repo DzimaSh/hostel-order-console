@@ -1,5 +1,6 @@
 package jdbc.dao;
 
+import entity.Bill;
 import entity.HostelOrder;
 import entity.Room;
 
@@ -12,10 +13,12 @@ import java.util.HashSet;
 import java.util.List;
 
 public class HostelOrderDAO {
+    public final static String SELECT_BY_ID_SQL = "SELECT * FROM hostel_order WHERE id = ?";
     private final Connection connection;
     private final HostelUserDAO hostelUserDAO;
 
-    public HostelOrderDAO(Connection connection, HostelUserDAO hostelUserDAO) {
+    public HostelOrderDAO(Connection connection,
+                          HostelUserDAO hostelUserDAO) {
         this.connection = connection;
         this.hostelUserDAO = hostelUserDAO;
     }
@@ -29,8 +32,7 @@ public class HostelOrderDAO {
     }
 
     public HostelOrder getHostelOrderById(Long id) throws SQLException {
-        String sql = "SELECT * FROM hostel_order WHERE id = ?";
-        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (PreparedStatement statement = connection.prepareStatement(SELECT_BY_ID_SQL)) {
             statement.setLong(1, id);
             ResultSet resultSet = statement.executeQuery();
             if (resultSet.next()) {
@@ -77,7 +79,7 @@ public class HostelOrderDAO {
                 resultSet.getDate("end_date").toLocalDate(),
                 hostelUserDAO.getHostelUserById(resultSet.getLong("client_id")),
                 new HashSet<>(), // You might want to fetch the actual rooms here
-                null, // You might want to fetch the actual bill here
+                BillDAO.prepareBillInject(connection, resultSet.getLong("bill_id")),
                 Room.Type.valueOf(resultSet.getString("desired_room_type")),
                 resultSet.getInt("desired_beds"),
                 HostelOrder.Status.valueOf(resultSet.getString("status"))
