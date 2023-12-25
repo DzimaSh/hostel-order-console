@@ -72,6 +72,20 @@ public class HostelUserDAO {
         }
     }
 
+    public HostelUser getHostelUserByEmail(String email) throws SQLException {
+        String sql = "SELECT * FROM hostel_user WHERE email = ?";
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, email);
+            ResultSet resultSet = statement.executeQuery();
+            if (resultSet.next()) {
+                return prepareHostelUser(resultSet);
+            } else {
+                return null;
+            }
+        }
+    }
+
+
     private HostelUser prepareHostelUser(ResultSet resultSet) throws SQLException {
         HostelUser hostelUser = new HostelUser();
         hostelUser.setId(resultSet.getLong("id"));

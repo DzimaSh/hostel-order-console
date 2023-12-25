@@ -9,6 +9,7 @@ import jdbc.dao.HostelOrderDAO;
 import jdbc.dao.HostelUserDAO;
 import jdbc.dao.RoomDAO;
 import lombok.extern.slf4j.Slf4j;
+import security.SecurityHolder;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -25,6 +26,7 @@ public class HostelManager {
     private final HostelOrderDAO hostelOrderDAO;
     private final BillDAO billDAO;
     private final Scanner scanner;
+    private final SecurityHolder securityHolder;
 
     public HostelManager(Connection connection, Scanner scanner) {
         this.hostelUserDAO = new HostelUserDAO(connection);
@@ -32,39 +34,19 @@ public class HostelManager {
         this.hostelOrderDAO = new HostelOrderDAO(connection, this.hostelUserDAO);
         this.billDAO = new BillDAO(connection, this.hostelOrderDAO);
 
-         this.scanner = scanner;
+        this.scanner = scanner;
+        this.securityHolder = new SecurityHolder(hostelUserDAO);
     }
 
     public void run() {
         while (true) {
-            showMenu();
-            System.out.println("Enter command: ");
-            int choice = -1;
-            if(scanner.hasNextInt())
-                choice = scanner.nextInt();
-
             try {
-                switch (choice) {
-                    case 1:
-                        createNewOrder();
-                        break;
-                    case 2:
-                        approveOrder();
-                        break;
-                    case 3:
-                        payForOrder();
-                        break;
-                    case 4:
-                        closeOrder();
-                        break;
-                    case 5:
-                        viewUnpaidBills();
-                        break;
-                    case 0:
-                        System.out.println("Exiting...");
-                        return;
-                    default:
-                        System.out.println("Invalid command.");
+                if (securityHolder.getCurrentUser() == null) {
+                    showLoginMenu();
+                    if (loginMenu(enterCommand())) break;
+                } else {
+                    showMainMenu();
+                    mainMenu(enterCommand());
                 }
             } catch (SQLException e) {
                 log.error("An error occurred", e);
@@ -72,7 +54,69 @@ public class HostelManager {
         }
     }
 
-    private void showMenu() {
+    private int enterCommand() {
+        System.out.println("Enter command: ");
+        int choice = -1;
+        if(scanner.hasNextInt()) {
+            choice = scanner.nextInt();
+            scanner.nextLine();
+        }
+
+        return choice;
+    }
+
+    private void mainMenu(int choice) throws SQLException {
+        switch (choice) {
+            case 1:
+                createNewOrder();
+                break;
+            case 2:
+                approveOrder();
+                break;
+            case 3:
+                payForOrder();
+                break;
+            case 4:
+                closeOrder();
+                break;
+            case 5:
+                viewUnpaidBills();
+                break;
+            case 0:
+                logout();
+                System.out.println("Logged out...");
+                break;
+            default:
+                System.out.println("Invalid command.");
+        }
+    }
+
+    private boolean loginMenu(int choice) throws SQLException {
+        switch (choice) {
+            case 1:
+                login();
+                break;
+            case 0:
+                System.out.println("Exiting...");
+                return true;
+            default:
+                System.out.println("Invalid command.");
+        }
+
+        return false;
+    }
+
+    private void showLoginMenu() {
+        System.out.println(
+                """
+                Menu:
+                1) Login
+                0) Exit
+                """
+        );
+    }
+
+    private void showMainMenu() {
         System.out.println(
                 """
                 Menu:
@@ -81,21 +125,44 @@ public class HostelManager {
                 3) Pay for order
                 4) Close order
                 5) View unpaid bills
-                0) Exit
+                0) Logout
                 """
         );
+    }
+
+    private void login() throws SQLException {
+        System.out.println("Enter email:");
+        String email = "";
+        if (scanner.hasNextLine())
+            email = scanner.nextLine().trim();
+
+        System.out.println("Enter password:");
+        String password = "";
+        if (scanner.hasNextLine())
+            password = scanner.nextLine();
+
+        securityHolder.login(email, password);
+    }
+
+    private void logout() {
+        securityHolder.logout();
+        log.info("User logged out.");
     }
 
     private void createNewOrder() throws SQLException {
         System.out.println("Enter client ID:");
         long clientId = -1L;
-        if (scanner.hasNextLong())
+        if (scanner.hasNextLong()) {
             clientId = scanner.nextLong();
+            scanner.nextLine();
+        }
 
         System.out.println("Enter number of beds:");
         int beds = -1;
-        if (scanner.hasNextInt())
+        if (scanner.hasNextInt()) {
             clientId = scanner.nextInt();
+            scanner.nextLine();
+        }
 
         System.out.println("Enter room type (BASIC or PREMIUM):");
         Room.Type type = null;
@@ -125,30 +192,30 @@ public class HostelManager {
     }
 
     private void approveOrder() throws SQLException {
-//        log.info("Enter order ID to approve:");
-//        Long orderId = scanner.nextLong();
-//        HostelOrder orderToApprove = hostelOrderDAO.getHostelOrderById(orderId);
-//        orderToApprove.setStatus(HostelOrder.Status.APPROVED);
-//        hostelOrderDAO.updateHostelOrder(orderToApprove);
-//        log.info("Order approved.");
+        log.info("Enter order ID to approve:");
+        Long orderId = scanner.nextLong();
+        HostelOrder orderToApprove = hostelOrderDAO.getHostelOrderById(orderId);
+        orderToApprove.setStatus(HostelOrder.Status.APPROVED);
+        hostelOrderDAO.updateHostelOrder(orderToApprove);
+        log.info("Order approved.");
     }
 
     private void payForOrder() throws SQLException {
-//        log.info("Enter order ID to pay for:");
-//        Long orderIdToPay = scanner.nextLong();
-//        HostelOrder orderToPay = hostelOrderDAO.getHostelOrderById(orderIdToPay);
-//        orderToPay.setStatus(HostelOrder.Status.PAYED);
-//        hostelOrderDAO.updateHostelOrder(orderToPay);
-//        log.info("Order paid.");
+        log.info("Enter order ID to pay for:");
+        Long orderIdToPay = scanner.nextLong();
+        HostelOrder orderToPay = hostelOrderDAO.getHostelOrderById(orderIdToPay);
+        orderToPay.setStatus(HostelOrder.Status.PAYED);
+        hostelOrderDAO.updateHostelOrder(orderToPay);
+        log.info("Order paid.");
     }
 
     private void closeOrder() throws SQLException {
-//        log.info("Enter order ID to close:");
-//        Long orderIdToClose = scanner.nextLong();
-//        HostelOrder orderToClose = hostelOrderDAO.getHostelOrderById(orderIdToClose);
-//        orderToClose.setStatus(HostelOrder.Status.CLOSED);
-//        hostelOrderDAO.updateHostelOrder(orderToClose);
-//        log.info("Order closed.");
+        log.info("Enter order ID to close:");
+        Long orderIdToClose = scanner.nextLong();
+        HostelOrder orderToClose = hostelOrderDAO.getHostelOrderById(orderIdToClose);
+        orderToClose.setStatus(HostelOrder.Status.CLOSED);
+        hostelOrderDAO.updateHostelOrder(orderToClose);
+        log.info("Order closed.");
     }
 
     private void viewUnpaidBills() throws SQLException {
