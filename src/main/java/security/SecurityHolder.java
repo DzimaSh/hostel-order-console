@@ -18,27 +18,34 @@ public class SecurityHolder {
     private final HostelUserDAO hostelUserDAO;
 
 
-    public HostelUser login(String email, String password) throws SQLException {
+    public boolean login(String email, String password) throws SQLException {
         log.debug("Attempt to auth user with email: " + email);
         HostelUser user = hostelUserDAO.getHostelUserByEmail(email);
         if (Objects.isNull(user)) {
             System.out.println(EMAIL_NOT_FOUND);
-            throw new IllegalStateException(EMAIL_NOT_FOUND);
+            return false;
         }
         if (BCrypt.verifyer().verify(password.toCharArray(), user.getPassword().toCharArray()).verified) {
             authorizedUser.set(user);
             log.debug("Logged in user with authority: " + user.getAuthority());
             System.out.println("Hello, " + user.getName());
-            return user;
+            return true;
         } else {
             System.out.println(INVALID_CREDENTIALS);
-            throw new IllegalStateException(INVALID_CREDENTIALS);
+            log.debug("Login attempt failed");
+            return false;
         }
     }
 
     public void logout() {
         log.debug("Bye, bye!!");
         authorizedUser.remove();
+    }
+
+    public boolean isAdminSession() {
+        return getCurrentUser()
+                .getAuthority()
+                .equals(HostelUser.Authority.ADMIN);
     }
 
     public HostelUser getCurrentUser() {

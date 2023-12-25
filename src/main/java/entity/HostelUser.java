@@ -30,4 +30,13 @@ public class HostelUser extends BaseEntity {
         this.authority = authority;
         this.hostelOrders = hostelOrders;
     }
+
+    public String profile() {
+        return "Profile Page:\n" +
+                "-------------\n" +
+                "Name: " + name + "\n" +
+                "Email: " + email + "\n" +
+                "Authority: " + authority + "\n" +
+                "Number of Orders: " + (hostelOrders != null ? hostelOrders.size() : 0);
+    }
 }

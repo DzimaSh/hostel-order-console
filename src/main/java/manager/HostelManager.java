@@ -18,6 +18,8 @@ import java.util.HashSet;
 import java.util.Scanner;
 import java.util.Set;
 
+import static manager.ScannerUtil.scanLong;
+
 @Slf4j
 public class HostelManager {
 
@@ -40,6 +42,7 @@ public class HostelManager {
 
     public void run() {
         while (true) {
+            System.out.println("\n\n");
             try {
                 if (securityHolder.getCurrentUser() == null) {
                     showLoginMenu();
@@ -60,6 +63,9 @@ public class HostelManager {
         if(scanner.hasNextInt()) {
             choice = scanner.nextInt();
             scanner.nextLine();
+        } else {
+            log.error("Cannot proceed command");
+            throw new IllegalStateException("Terminal is busy...");
         }
 
         return choice;
@@ -68,20 +74,20 @@ public class HostelManager {
     private void mainMenu(int choice) throws SQLException {
         switch (choice) {
             case 1:
-                createNewOrder();
+                seeProfilePage();
                 break;
             case 2:
-                approveOrder();
-                break;
-            case 3:
                 payForOrder();
                 break;
-            case 4:
-                closeOrder();
-                break;
-            case 5:
-                viewUnpaidBills();
-                break;
+//            case 2:
+//                approveOrder();
+//                break;
+//            case 3:
+//                payForOrder();
+//                break;
+//            case 4:
+//                viewUnpaidBills();
+//                break;
             case 0:
                 logout();
                 System.out.println("Logged out...");
@@ -117,20 +123,27 @@ public class HostelManager {
     }
 
     private void showMainMenu() {
-        System.out.println(
+        final String adminMenu = """
+                5) Approve order
+                6) View unpaid bills
+                7) See free rooms
+                8) See all clients
+                """;
+
+        System.out.printf(
                 """
                 Menu:
-                1) Create new order
-                2) Approve order
-                3) Pay for order
-                4) Close order
-                5) View unpaid bills
+                1) See profile page
+                2) Pay for order
+                3) Check my orders
+                4) Create new order
+                %s
                 0) Logout
-                """
+                """, securityHolder.isAdminSession() ? adminMenu : ""
         );
     }
 
-    private void login() throws SQLException {
+    private boolean login() throws SQLException {
         System.out.println("Enter email:");
         String email = "";
         if (scanner.hasNextLine())
@@ -141,12 +154,16 @@ public class HostelManager {
         if (scanner.hasNextLine())
             password = scanner.nextLine();
 
-        securityHolder.login(email, password);
+        return securityHolder.login(email, password);
     }
 
     private void logout() {
         securityHolder.logout();
         log.info("User logged out.");
+    }
+
+    private void seeProfilePage() {
+        System.out.println(securityHolder.getCurrentUser().profile());
     }
 
     private void createNewOrder() throws SQLException {
@@ -201,12 +218,18 @@ public class HostelManager {
     }
 
     private void payForOrder() throws SQLException {
-        log.info("Enter order ID to pay for:");
-        Long orderIdToPay = scanner.nextLong();
+        log.debug("Paying for order");
+
+        System.out.println("Enter order ID to pay for: ");
+        Long orderIdToPay = scanLong();
+
         HostelOrder orderToPay = hostelOrderDAO.getHostelOrderById(orderIdToPay);
         orderToPay.setStatus(HostelOrder.Status.PAYED);
         hostelOrderDAO.updateHostelOrder(orderToPay);
-        log.info("Order paid.");
+        System.out.println("Nice! You have payed your order:)");
+
+
+        log.debug("Order with id: " + orderToPay.getId() +  " is successfully paid.");
     }
 
     private void closeOrder() throws SQLException {
