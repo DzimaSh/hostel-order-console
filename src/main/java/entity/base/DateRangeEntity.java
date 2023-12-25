@@ -9,11 +9,16 @@ import java.time.LocalDate;
 
 @EqualsAndHashCode(callSuper = true)
 @Data
-@AllArgsConstructor
 @NoArgsConstructor
 public abstract class DateRangeEntity extends BaseEntity {
 
     protected LocalDate startDate;
 
     protected LocalDate endDate;
+
+    public DateRangeEntity(Long id, LocalDate startDate, LocalDate endDate) {
+        super(id);
+        this.startDate = startDate;
+        this.endDate = endDate;
+    }
 }

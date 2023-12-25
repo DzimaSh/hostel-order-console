@@ -64,7 +64,7 @@ public class ConnectionPool implements AutoCloseable {
         return connections.remove(connections.size() - 1);
     }
 
-    public synchronized void close() throws IOException {
+    public synchronized void close() throws SQLException {
         for (Connection connection : connections) {
             if (connection != null) {
                 try {
@@ -73,7 +73,7 @@ public class ConnectionPool implements AutoCloseable {
                     }
                 } catch (SQLException e) {
                     log.error("Error closing connection", e);
-                    throw new IOException("Error closing connection", e);
+                    throw e;
                 }
             }
         }

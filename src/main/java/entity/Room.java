@@ -8,7 +8,6 @@ import java.util.Set;
 
 @EqualsAndHashCode(callSuper = true, exclude = "hostelOrders")
 @Data
-@AllArgsConstructor
 @NoArgsConstructor
 public class Room extends BaseEntity {
 
@@ -30,6 +29,16 @@ public class Room extends BaseEntity {
     private Type type;
     @ToString.Exclude
     private Set<HostelOrder> hostelOrders;
+
+    public Room(Long id, Integer roomNumber, Long possibleLivers, Double rentPricePerDay, Status status, Type type, Set<HostelOrder> hostelOrders) {
+        super(id);
+        this.roomNumber = roomNumber;
+        this.possibleLivers = possibleLivers;
+        this.rentPricePerDay = rentPricePerDay;
+        this.status = status;
+        this.type = type;
+        this.hostelOrders = hostelOrders;
+    }
 
     public Room addOrders(Collection<HostelOrder> orders) {
         this.getHostelOrders().addAll(orders);

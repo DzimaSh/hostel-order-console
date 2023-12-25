@@ -7,7 +7,6 @@ import java.util.Set;
 
 @EqualsAndHashCode(callSuper = true, exclude = "hostelOrders")
 @Data
-@AllArgsConstructor
 @NoArgsConstructor
 public class HostelUser extends BaseEntity {
 
@@ -22,4 +21,13 @@ public class HostelUser extends BaseEntity {
     private Authority authority;
     @ToString.Exclude
     private Set<HostelOrder> hostelOrders;
+
+    public HostelUser(Long id, String name, String email, String password, Authority authority, Set<HostelOrder> hostelOrders) {
+        super(id);
+        this.name = name;
+        this.email = email;
+        this.password = password;
+        this.authority = authority;
+        this.hostelOrders = hostelOrders;
+    }
 }

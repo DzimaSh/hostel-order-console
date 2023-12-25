@@ -5,7 +5,6 @@ import lombok.*;
 
 @EqualsAndHashCode(callSuper = true, exclude = "hostelOrder")
 @Data
-@AllArgsConstructor
 @NoArgsConstructor
 public class Bill extends BaseEntity {
 
@@ -19,4 +18,11 @@ public class Bill extends BaseEntity {
     private Double billPrice;
 
     private Status status = Status.NOT_PAYED;
+
+    public Bill(Long id, HostelOrder hostelOrder, Double billPrice, Status status) {
+        super(id);
+        this.hostelOrder = hostelOrder;
+        this.billPrice = billPrice;
+        this.status = status;
+    }
 }
