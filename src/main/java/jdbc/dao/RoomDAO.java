@@ -6,7 +6,9 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class RoomDAO {
     public final static String SELECT_BY_ID_SQL = "SELECT * FROM room WHERE id = ?";
@@ -41,10 +43,11 @@ public class RoomDAO {
         }
     }
 
-    public List<Room> getAllRooms() throws SQLException {
-        List<Room> rooms = new ArrayList<>();
-        String sql = "SELECT * FROM room";
+    public Set<Room> getAllRoomsByStatus(Room.Status status) throws SQLException {
+        Set<Room> rooms = new HashSet<>();
+        String sql = "SELECT * FROM room WHERE status = ?";
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, status.name());
             ResultSet resultSet = statement.executeQuery();
             while (resultSet.next()) {
                 rooms.add(prepareRoom(resultSet));

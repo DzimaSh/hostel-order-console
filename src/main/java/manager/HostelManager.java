@@ -70,29 +70,35 @@ public class HostelManager {
     }
 
     private void mainMenu(int choice) throws SQLException {
-        switch (choice) {
-            case 1:
-                seeProfilePage();
-                break;
-            case 2:
-                try {
+        try {
+            switch (choice) {
+                case 1:
+                    seeProfilePage();
+                    break;
+                case 2:
                     payForOrder();
-                } catch (IllegalStateException e) {
-                    System.out.println(e.getMessage());
-                }
-                break;
-            case 3:
-                checkOrders();
-                break;
-            case 4:
-                createNewOrder();
-                break;
-            case 0:
-                logout();
-                System.out.println("Logged out...");
-                break;
-            default:
-                System.out.println("Invalid command.");
+                    break;
+                case 3:
+                    checkOrders();
+                    break;
+                case 4:
+                    createNewOrder();
+                    break;
+                case 6:
+                    viewUnpaidBills();
+                    break;
+                case 7:
+                    seeFreeRooms();
+                    break;
+                case 0:
+                    logout();
+                    System.out.println("Logged out...");
+                    break;
+                default:
+                    System.out.println("Invalid command.");
+            }
+        } catch (IllegalStateException e) {
+            System.out.println(e.getMessage());
         }
         System.out.println("Press Enter to proceed...");
         scanner.nextLine();
@@ -130,7 +136,6 @@ public class HostelManager {
                 5) Approve order
                 6) View unpaid bills
                 7) See free rooms
-                8) See all clients
                 """;
 
         System.out.printf(
@@ -260,6 +265,47 @@ public class HostelManager {
         log.debug("Order with id: " + orderToPay.getId() +  " is successfully paid.");
     }
 
+    private void seeFreeRooms() throws SQLException {
+        log.debug("Fetching for all free rooms...");
+
+        adminCheck();
+
+        Set<Room> rooms = roomDAO.getAllRoomsByStatus(Room.Status.FREE);
+        if (rooms.isEmpty()) {
+            System.out.println("Unfortunately, there is no any available room to rent...");
+            return;
+        }
+
+        System.out.println("There are " + rooms.size() + " available rooms:");
+
+        String roomsDetails = rooms.stream()
+                .map(room -> "\t" + room.details().replace("\n", "\n\t"))
+                .collect(Collectors.joining("\n"));
+
+        System.out.println(roomsDetails);
+        System.out.println("You can assign any of these rooms to the incoming orders!");
+
+        log.debug(rooms.size() + " available rooms fetched");
+    }
+
+    private void viewUnpaidBills() throws SQLException {
+        log.debug("Fetching for unpaid bills...");
+
+        Set<Bill> unpaidBills = billDAO.getAllUnpaidBills();
+        if (unpaidBills.isEmpty()) {
+            System.out.println("Nice! There are no unpaid bills!");
+            return;
+        }
+
+        System.out.println("Unpaid bills:");
+        String billsDetails = unpaidBills.stream()
+                .map(bill -> "\t" + bill.details().replace("\n", "\n\t"))
+                .collect(Collectors.joining("\n"));
+        System.out.println(billsDetails);
+
+        log.debug(unpaidBills.size() + " unpaid bills fetched");
+    }
+
     private void closeOrder() throws SQLException {
         log.info("Enter order ID to close:");
         Long orderIdToClose = scanner.nextLong();
@@ -269,12 +315,6 @@ public class HostelManager {
         log.info("Order closed.");
     }
 
-    private void viewUnpaidBills() throws SQLException {
-        Set<Bill> unpaidBills = billDAO.getAllUnpaidBills();
-        System.out.println("Unpaid bills:");
-        unpaidBills.forEach(bill -> log.info(bill.toString()));
-    }
-
     private void approveOrder() throws SQLException {
         log.info("Enter order ID to approve:");
         Long orderId = scanner.nextLong();
@@ -282,6 +322,13 @@ public class HostelManager {
         orderToApprove.setStatus(HostelOrder.Status.APPROVED);
         hostelOrderDAO.updateHostelOrder(orderToApprove);
         log.info("Order approved.");
+    }
+
+    private void adminCheck() {
+        if (!securityHolder.isAdminSession()) {
+            log.warn("Regular user's attempt to see all rooms!");
+            throw new IllegalStateException("Access denied");
+        }
     }
 
 }

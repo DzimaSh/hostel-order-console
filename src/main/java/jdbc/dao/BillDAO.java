@@ -3,6 +3,7 @@ package jdbc.dao;
 import entity.Bill;
 import entity.HostelOrder;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.logging.log4j.core.config.Order;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -85,9 +86,14 @@ public class BillDAO {
 
     public Set<Bill> getAllUnpaidBills() throws SQLException {
         Set<Bill> unpaidBills = new HashSet<>();
-        String sql = "SELECT * FROM bill WHERE status = ?";
+        String sql = """
+                 SELECT b.*, ho.id AS hostel_order_id FROM hostel_order AS ho
+                 LEFT JOIN bill AS b on b.id = ho.bill_id
+                 WHERE ho.status = ? AND b.status = ?;
+                 """;
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setString(1, Bill.Status.NOT_PAYED.name());
+            statement.setString(1, HostelOrder.Status.APPROVED.name());
+            statement.setString(2, Bill.Status.NOT_PAYED.name());
             ResultSet resultSet = statement.executeQuery();
             while (resultSet.next()) {
                 unpaidBills.add(prepareBill(resultSet));
