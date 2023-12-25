@@ -1,6 +1,8 @@
 package jdbc.dao;
 
+import entity.HostelOrder;
 import entity.HostelUser;
+
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -87,7 +89,7 @@ public class HostelUserDAO {
     }
 
 
-    private HostelUser prepareHostelUser(ResultSet resultSet) throws SQLException {
+    private static HostelUser prepareHostelUser(ResultSet resultSet) throws SQLException {
         HostelUser hostelUser = new HostelUser();
         hostelUser.setId(resultSet.getLong("id"));
         hostelUser.setName(resultSet.getString("name"));
@@ -95,5 +97,16 @@ public class HostelUserDAO {
         hostelUser.setPassword(resultSet.getString("password"));
         hostelUser.setAuthority(HostelUser.Authority.valueOf(resultSet.getString("authority")));
         return hostelUser;
+    }
+
+    protected static HostelUser prepareInject(Connection connection, Long userId) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(SELECT_BY_ID_SQL)) {
+            statement.setLong(1, userId);
+            ResultSet resultSet = statement.executeQuery();
+            if (resultSet.next()) {
+                return prepareHostelUser(resultSet);
+            }
+            return null;
+        }
     }
 }

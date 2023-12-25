@@ -2,32 +2,44 @@ package jdbc.dao;
 
 import entity.Bill;
 import entity.HostelOrder;
+import lombok.extern.slf4j.Slf4j;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+@Slf4j
 public class BillDAO {
     public final static String SELECT_BY_ID_SQL = "SELECT * FROM bill WHERE id = ?";
     private final Connection connection;
-    private final HostelOrderDAO hostelOrderDAO;
 
-    public BillDAO(Connection connection, HostelOrderDAO hostelOrderDAO) {
+    public BillDAO(Connection connection) {
         this.connection = connection;
-        this.hostelOrderDAO = hostelOrderDAO;
     }
 
-    public void createBill(Bill bill) throws SQLException {
+    public Bill createBill(Bill bill) throws SQLException {
         String sql = "INSERT INTO bill (bill_price, status) VALUES (?, ?)";
-        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             prepareStatement(bill, statement);
-            statement.executeUpdate();
+            int affectedRows = statement.executeUpdate();
+
+            if (affectedRows == 0) {
+                log.error("Error while creating Bill");
+                throw new SQLException("Creating order failed, no rows affected.");
+            }
+
+            try (ResultSet generatedKeys = statement.getGeneratedKeys()) {
+                if (generatedKeys.next()) {
+                    bill.setId(generatedKeys.getLong(1));
+                } else {
+                    log.error("Error while creating Bill");
+                    throw new SQLException("Creating order failed, no ID obtained.");
+                }
+            }
         }
+        return bill;
     }
 
     public Bill getBillById(Long id) throws SQLException {
@@ -87,7 +99,7 @@ public class BillDAO {
     private Bill prepareBill(ResultSet resultSet) throws SQLException {
         return new Bill(
                 resultSet.getLong("id"),
-                hostelOrderDAO.getHostelOrderById(resultSet.getLong("hostel_order_id")),
+                HostelOrderDAO.prepareInject(connection, resultSet.getLong("hostel_order_id")),
                 resultSet.getDouble("bill_price"),
                 Bill.Status.valueOf(resultSet.getString("status"))
         );
@@ -98,18 +110,19 @@ public class BillDAO {
         statement.setString(2, bill.getStatus().name());
     }
 
-    protected static Bill prepareBillInject(Connection connection, Long billId) throws SQLException {
-        Bill bill = null;
-        PreparedStatement statement = connection.prepareStatement(BillDAO.SELECT_BY_ID_SQL);
-        statement.setLong(1, billId);
-        ResultSet resultSet = statement.executeQuery();
-        if (resultSet.next()) {
-            bill = new Bill();
-            bill.setId(resultSet.getLong("id"));
-            bill.setBillPrice(resultSet.getDouble("bill_price"));
-            bill.setStatus(Bill.Status.valueOf(resultSet.getString("status")));
+    protected static Bill prepareInject(Connection connection, Long billId) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(BillDAO.SELECT_BY_ID_SQL)) {
+            statement.setLong(1, billId);
+            ResultSet resultSet = statement.executeQuery();
+            if (resultSet.next()) {
+                return new Bill(
+                        resultSet.getLong("id"),
+                        null,
+                        resultSet.getDouble("bill_price"),
+                        Bill.Status.valueOf(resultSet.getString("status"))
+                );
+            }
+            return null;
         }
-
-        return bill;
     }
 }

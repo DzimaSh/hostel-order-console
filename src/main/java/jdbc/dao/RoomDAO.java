@@ -74,7 +74,7 @@ public class RoomDAO {
         }
     }
 
-    private Room prepareRoom(ResultSet resultSet) throws SQLException {
+    private static Room prepareRoom(ResultSet resultSet) throws SQLException {
         Room room = new Room();
         room.setId(resultSet.getLong("id"));
         room.setRoomNumber(resultSet.getInt("room_number"));
@@ -83,6 +83,18 @@ public class RoomDAO {
         room.setStatus(Room.Status.valueOf(resultSet.getString("status")));
         room.setType(Room.Type.valueOf(resultSet.getString("type")));
         return room;
+    }
+
+    protected static Room prepareInject(Connection connection, Long roomId) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(SELECT_BY_ID_SQL)) {
+            statement.setLong(1, roomId);
+            ResultSet resultSet = statement.executeQuery();
+            if (resultSet.next()) {
+                return prepareRoom(resultSet);
+            }
+            statement.close();
+            return null;
+        }
     }
 }
 

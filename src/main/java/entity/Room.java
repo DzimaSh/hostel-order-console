@@ -45,4 +45,16 @@ public class Room extends BaseEntity {
 
         return this;
     }
+
+    public String details() {
+        return "Room Details:\n" +
+                "-------------\n" +
+                "Room ID: " + id + "\n" +
+                "Room Number: " + roomNumber + "\n" +
+                "Possible Livers: " + possibleLivers + "\n" +
+                "Rent Price Per Day: " + rentPricePerDay + "\n" +
+                "Status: " + status + "\n" +
+                "Type: " + type + "\n";
+    }
+
 }

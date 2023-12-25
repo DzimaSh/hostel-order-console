@@ -15,7 +15,7 @@ public class Bill extends BaseEntity {
 
     private HostelOrder hostelOrder;
 
-    private Double billPrice;
+    private Double billPrice = -1d;
 
     private Status status = Status.NOT_PAYED;
 
@@ -25,4 +25,14 @@ public class Bill extends BaseEntity {
         this.billPrice = billPrice;
         this.status = status;
     }
+
+    public String details() {
+        return "Bill Details:\n" +
+                "-------------\n" +
+                "Bill ID: " + id + "\n" +
+                "Order ID: " + (hostelOrder != null ? hostelOrder.getId() : "Not available") + "\n" +
+                "Bill Price: " + billPrice + "\n" +
+                "Status: " + status + "\n";
+    }
+
 }

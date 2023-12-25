@@ -3,32 +3,48 @@ package jdbc.dao;
 import entity.Bill;
 import entity.HostelOrder;
 import entity.Room;
+import lombok.extern.slf4j.Slf4j;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
+import java.sql.*;
+import java.util.*;
 
+@Slf4j
 public class HostelOrderDAO {
     public final static String SELECT_BY_ID_SQL = "SELECT * FROM hostel_order WHERE id = ?";
     private final Connection connection;
-    private final HostelUserDAO hostelUserDAO;
+    private final BillDAO billDAO;
 
-    public HostelOrderDAO(Connection connection,
-                          HostelUserDAO hostelUserDAO) {
+    public HostelOrderDAO(Connection connection) {
         this.connection = connection;
-        this.hostelUserDAO = hostelUserDAO;
+        this.billDAO = new BillDAO(connection);
     }
 
-    public void createHostelOrder(HostelOrder order) throws SQLException {
-        String sql = "INSERT INTO hostel_order (start_date, end_date, client_id, desired_room_type, desired_beds, status) VALUES (?, ?, ?, ?, ?, ?)";
-        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+    public HostelOrder createHostelOrder(HostelOrder order) throws SQLException {
+        String sql = "INSERT INTO hostel_order (start_date, end_date, client_id, desired_room_type, desired_beds, status, bill_id) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        try (PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            if (Objects.isNull(order.getBill()) || Objects.isNull(order.getBill().getId())) {
+                order.setBill(billDAO.createBill(new Bill()));
+            }
+
             prepareStatement(order, statement);
-            statement.executeUpdate();
+            statement.setLong(7, order.getBill().getId());
+            int affectedRows = statement.executeUpdate();
+
+            if (affectedRows == 0) {
+                log.error("Error while creating HostelOrder");
+                throw new SQLException("Creating order failed, no rows affected.");
+            }
+
+            try (ResultSet generatedKeys = statement.getGeneratedKeys()) {
+                if (generatedKeys.next()) {
+                    prepareHostelOrder(generatedKeys);
+                } else {
+                    log.error("Error while creating HostelOrder");
+                    throw new SQLException("Creating order failed, no ID obtained.");
+                }
+            }
         }
+        return order;
     }
 
     public HostelOrder getHostelOrderById(Long id) throws SQLException {
@@ -55,6 +71,19 @@ public class HostelOrderDAO {
         return orders;
     }
 
+    public List<HostelOrder> getAllHostelOrdersByUser(Long userId) throws SQLException {
+        List<HostelOrder> orders = new ArrayList<>();
+        String sql = "SELECT * FROM hostel_order WHERE client_id = ?";
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setLong(1, userId);
+            ResultSet resultSet = statement.executeQuery();
+            while (resultSet.next()) {
+                orders.add(prepareHostelOrder(resultSet));
+            }
+        }
+        return orders;
+    }
+
     public void updateHostelOrder(HostelOrder order) throws SQLException {
         String sql = "UPDATE hostel_order SET start_date = ?, end_date = ?, client_id = ?, desired_room_type = ?, desired_beds = ?, status = ? WHERE id = ?";
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -73,13 +102,14 @@ public class HostelOrderDAO {
     }
 
     private HostelOrder prepareHostelOrder(ResultSet resultSet) throws SQLException {
+        Long orderId = resultSet.getLong("id");
         return new HostelOrder(
-                resultSet.getLong("id"),
+                orderId,
                 resultSet.getDate("start_date").toLocalDate(),
                 resultSet.getDate("end_date").toLocalDate(),
-                hostelUserDAO.getHostelUserById(resultSet.getLong("client_id")),
-                new HashSet<>(), // You might want to fetch the actual rooms here
-                BillDAO.prepareBillInject(connection, resultSet.getLong("bill_id")),
+                HostelUserDAO.prepareInject(connection, resultSet.getLong("client_id")),
+                fetchConnectedRooms(connection, orderId),
+                BillDAO.prepareInject(connection, resultSet.getLong("bill_id")),
                 Room.Type.valueOf(resultSet.getString("desired_room_type")),
                 resultSet.getInt("desired_beds"),
                 HostelOrder.Status.valueOf(resultSet.getString("status"))
@@ -93,5 +123,40 @@ public class HostelOrderDAO {
         statement.setString(4, order.getDesiredRoomType().name());
         statement.setInt(5, order.getDesiredBeds());
         statement.setString(6, order.getStatus().name());
+    }
+
+    private static Set<Room> fetchConnectedRooms(Connection connection, Long id) throws SQLException {
+        Set<Room> rooms = new HashSet<>();
+        String sql = "SELECT * FROM order_room WHERE order_id = ?";
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setLong(1, id);
+            ResultSet resultSet = statement.executeQuery();
+            while (resultSet.next()) {
+                Room room = RoomDAO.prepareInject(connection, resultSet.getLong("room_id"));
+                rooms.add(room);
+            }
+        }
+        return rooms;
+    }
+
+    protected static HostelOrder prepareInject(Connection connection, Long orderId) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(SELECT_BY_ID_SQL)) {
+            statement.setLong(1, orderId);
+            ResultSet resultSet = statement.executeQuery();
+            if (resultSet.next()) {
+                return new HostelOrder(
+                        resultSet.getLong("id"),
+                        resultSet.getDate("start_date").toLocalDate(),
+                        resultSet.getDate("end_date").toLocalDate(),
+                        null,
+                        new HashSet<>(),
+                        null,
+                        Room.Type.valueOf(resultSet.getString("desired_room_type")),
+                        resultSet.getInt("desired_beds"),
+                        HostelOrder.Status.valueOf(resultSet.getString("status"))
+                );
+            }
+            return null;
+        }
     }
 }

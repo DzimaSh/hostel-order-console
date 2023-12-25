@@ -14,12 +14,10 @@ import security.SecurityHolder;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.LocalDate;
-import java.util.HashSet;
-import java.util.Objects;
-import java.util.Scanner;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
-import static manager.ScannerUtil.scanLong;
+import static manager.ScannerUtil.*;
 
 @Slf4j
 public class HostelManager {
@@ -34,8 +32,8 @@ public class HostelManager {
     public HostelManager(Connection connection, Scanner scanner) {
         this.hostelUserDAO = new HostelUserDAO(connection);
         this.roomDAO = new RoomDAO(connection);
-        this.hostelOrderDAO = new HostelOrderDAO(connection, this.hostelUserDAO);
-        this.billDAO = new BillDAO(connection, this.hostelOrderDAO);
+        this.hostelOrderDAO = new HostelOrderDAO(connection);
+        this.billDAO = new BillDAO(connection);
 
         this.scanner = scanner;
         this.securityHolder = new SecurityHolder(hostelUserDAO);
@@ -83,15 +81,12 @@ public class HostelManager {
                     System.out.println(e.getMessage());
                 }
                 break;
-//            case 2:
-//                approveOrder();
-//                break;
-//            case 3:
-//                payForOrder();
-//                break;
-//            case 4:
-//                viewUnpaidBills();
-//                break;
+            case 3:
+                checkOrders();
+                break;
+            case 4:
+                createNewOrder();
+                break;
             case 0:
                 logout();
                 System.out.println("Logged out...");
@@ -175,54 +170,50 @@ public class HostelManager {
     }
 
     private void createNewOrder() throws SQLException {
-        System.out.println("Enter client ID:");
-        long clientId = -1L;
-        if (scanner.hasNextLong()) {
-            clientId = scanner.nextLong();
-            scanner.nextLine();
-        }
+        log.debug("Creating new order for client " + securityHolder.getCurrentUser().getEmail());
+
+        long clientId = securityHolder.getCurrentUser().getId();
 
         System.out.println("Enter number of beds:");
-        int beds = -1;
-        if (scanner.hasNextInt()) {
-            clientId = scanner.nextInt();
-            scanner.nextLine();
-        }
+        int beds = scanInteger();
 
         System.out.println("Enter room type (BASIC or PREMIUM):");
-        Room.Type type = null;
-        if (scanner.hasNextLine())
-            type = Room.Type.valueOf(scanner.nextLine().toUpperCase());
+        Room.Type type = Room.Type.valueOf(scanLine().toUpperCase());
 
         System.out.println("Enter start date (yyyy-mm-dd):");
-        LocalDate startDate = null;
-        if (scanner.hasNextLine())
-            startDate = LocalDate.parse(scanner.nextLine());
+        LocalDate startDate = LocalDate.parse(scanLine());
 
-        log.info("Enter end date (yyyy-mm-dd):");
-        LocalDate endDate = null;
-        if (scanner.hasNextLine())
-            endDate = LocalDate.parse(scanner.nextLine());
+        System.out.println("Enter end date (yyyy-mm-dd):");
+        LocalDate endDate = LocalDate.parse(scanLine());
 
         HostelUser client = hostelUserDAO.getHostelUserById(clientId);
 
         HostelOrder order = new HostelOrder(
                 null, startDate, endDate,
                 client, new HashSet<>(), null,
-                type, beds,  HostelOrder.Status.OPEN
+                type, beds, HostelOrder.Status.OPEN
         );
 
         hostelOrderDAO.createHostelOrder(order);
+        System.out.println("Order is created! Please wait till approval, then pay the bill!");
+
         log.info("Order created.");
     }
+    private void checkOrders() throws SQLException {
+        log.debug("Fetching all orders for user " + securityHolder.getCurrentUser().getEmail());
 
-    private void approveOrder() throws SQLException {
-        log.info("Enter order ID to approve:");
-        Long orderId = scanner.nextLong();
-        HostelOrder orderToApprove = hostelOrderDAO.getHostelOrderById(orderId);
-        orderToApprove.setStatus(HostelOrder.Status.APPROVED);
-        hostelOrderDAO.updateHostelOrder(orderToApprove);
-        log.info("Order approved.");
+        List<HostelOrder> orders = hostelOrderDAO
+                .getAllHostelOrdersByUser(securityHolder.getCurrentUser().getId());
+        System.out.println("You have " + orders.size() + " orders!");
+
+        if (!orders.isEmpty()) {
+            String ordersDetails = orders.stream()
+                    .map(order -> "\t" + order.details().replace("\n", "\n\t"))
+                    .collect(Collectors.joining("\n"));
+            System.out.println(ordersDetails);
+        }
+
+        log.debug("Fetched " + orders.size() + " orders");
     }
 
     private void payForOrder() throws SQLException {
@@ -232,16 +223,23 @@ public class HostelManager {
         Long orderIdToPay = scanLong();
 
         HostelOrder orderToPay = hostelOrderDAO.getHostelOrderById(orderIdToPay);
+        if (orderToPay.getStatus().equals(HostelOrder.Status.OPEN)) {
+           log.debug("Trying to pay unapproved order bill...");
+           throw new IllegalStateException("Order is not approved. Cannot proceed payment...");
+        }
 
         if (Objects.isNull(orderToPay.getBill())) {
             log.error("Cannot proceed payment! Bill is null");
             throw new NullPointerException("Bill is null");
-        } else if (orderToPay.getBill().getStatus().equals(Bill.Status.PAYED)) {
-            log.error("Trying to pay. Already Payed bill");
-            throw new IllegalStateException("Bill is already payed");
         }
 
         System.out.println(orderToPay.details());
+
+        if (orderToPay.getBill().getStatus().equals(Bill.Status.PAYED)) {
+            log.debug("Trying to pay already payed bill...");
+            throw new IllegalStateException("Bill is already payed");
+        }
+
         System.out.println("Bill Amount: " + orderToPay.getBill().getBillPrice());
 
         System.out.println("Press Enter to proceed...");
@@ -276,4 +274,14 @@ public class HostelManager {
         System.out.println("Unpaid bills:");
         unpaidBills.forEach(bill -> log.info(bill.toString()));
     }
+
+    private void approveOrder() throws SQLException {
+        log.info("Enter order ID to approve:");
+        Long orderId = scanner.nextLong();
+        HostelOrder orderToApprove = hostelOrderDAO.getHostelOrderById(orderId);
+        orderToApprove.setStatus(HostelOrder.Status.APPROVED);
+        hostelOrderDAO.updateHostelOrder(orderToApprove);
+        log.info("Order approved.");
+    }
+
 }

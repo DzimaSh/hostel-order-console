@@ -1,5 +1,6 @@
 package manager;
 
+import entity.Room;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.InputMismatchException;
@@ -9,6 +10,14 @@ import java.util.Scanner;
 public class ScannerUtil {
 
     private static final Scanner scanner = new Scanner(System.in);
+
+    public static String scanLine() {
+        if (scanner.hasNextLine()) {
+            return scanner.nextLine();
+        } else {
+            throw error("Expected a line.");
+        }
+    }
 
     public static Integer scanInteger() {
         if (scanner.hasNextInt()) {

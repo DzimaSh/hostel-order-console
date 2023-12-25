@@ -37,6 +37,6 @@ public class HostelUser extends BaseEntity {
                 "Name: " + name + "\n" +
                 "Email: " + email + "\n" +
                 "Authority: " + authority + "\n" +
-                "Number of Orders: " + (hostelOrders != null ? hostelOrders.size() : 0);
+                "Number of Orders: " + (hostelOrders != null ? hostelOrders.size() : 0) + "\n";
     }
 }
