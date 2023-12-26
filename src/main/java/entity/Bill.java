@@ -1,11 +1,19 @@
 package entity;
 
 import entity.base.BaseEntity;
+import jakarta.persistence.*;
 import lombok.*;
 
 @EqualsAndHashCode(callSuper = true, exclude = "hostelOrder")
 @Data
 @NoArgsConstructor
+@Table(name = "bill")
+@Entity
+@SequenceGenerator(
+        name = "default_seq",
+        sequenceName = "bill_seq",
+        allocationSize = 1
+)
 public class Bill extends BaseEntity {
 
     public enum Status {
@@ -13,10 +21,13 @@ public class Bill extends BaseEntity {
         PAYED,
     }
 
+    @OneToOne(mappedBy = "bill")
+    @ToString.Exclude
     private HostelOrder hostelOrder;
 
     private Double billPrice = -1d;
 
+    @Enumerated(EnumType.STRING)
     private Status status = Status.NOT_PAYED;
 
     public Bill(Long id, HostelOrder hostelOrder, Double billPrice, Status status) {

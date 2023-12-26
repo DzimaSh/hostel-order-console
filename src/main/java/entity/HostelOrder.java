@@ -1,6 +1,7 @@
 package entity;
 
 import entity.base.DateRangeEntity;
+import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDate;
@@ -11,6 +12,13 @@ import java.util.stream.Collectors;
 @EqualsAndHashCode(callSuper = true, exclude = { "client", "rooms", "bill" })
 @Data
 @NoArgsConstructor
+@Entity
+@Table(name = "hostel_order")
+@SequenceGenerator(
+        name = "default_seq",
+        sequenceName = "hostel_order_seq",
+        allocationSize = 1
+)
 public class HostelOrder extends DateRangeEntity {
 
     public enum Status {
@@ -21,13 +29,30 @@ public class HostelOrder extends DateRangeEntity {
     }
 
     @ToString.Exclude
+    @ManyToOne
+    @JoinColumn(name = "client_id")
     private HostelUser client;
+
     @ToString.Exclude
+    @ManyToMany(cascade = {CascadeType.REFRESH, CascadeType.MERGE}, fetch = FetchType.EAGER)
+    @JoinTable(
+            name = "order_room",
+            joinColumns = { @JoinColumn(name = "order_id") },
+            inverseJoinColumns = { @JoinColumn(name = "room_id") }
+    )
     private Set<Room> rooms;
+
     @ToString.Exclude
+    @OneToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "bill_id")
     private Bill bill;
+
+    @Enumerated(EnumType.STRING)
     private Room.Type desiredRoomType;
+
     private Integer desiredBeds;
+
+    @Enumerated(EnumType.STRING)
     private Status status;
 
     public HostelOrder(Long id,

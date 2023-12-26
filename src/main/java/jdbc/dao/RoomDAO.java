@@ -1,125 +1,95 @@
 package jdbc.dao;
 
+import entity.HostelOrder;
 import entity.Room;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.HashSet;
+import jakarta.persistence.*;
+import jakarta.persistence.criteria.*;
 import java.util.Set;
+import java.util.stream.Collectors;
 
+@Slf4j
+@RequiredArgsConstructor
 public class RoomDAO {
-    public final static String SELECT_BY_ID_SQL = "SELECT * FROM room WHERE id = ?";
-    private final Connection connection;
 
-    public RoomDAO(Connection connection) {
-        this.connection = connection;
-    }
+    private final EntityManager entityManager;
 
-    public void createRoom(Room room) throws SQLException {
-        String sql = "INSERT INTO room (id, room_number, possible_livers, rent_price_per_day, status, type) VALUES (?, ?, ?, ?, ?, ?)";
-        try (PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setLong(1, room.getId());
-            statement.setInt(2, room.getRoomNumber());
-            statement.setLong(3, room.getPossibleLivers());
-            statement.setDouble(4, room.getRentPricePerDay());
-            statement.setString(5, room.getStatus().name());
-            statement.setString(6, room.getType().name());
-            statement.executeUpdate();
-        }
-    }
-
-    public Room getRoomById(Long id) throws SQLException {
-        try (PreparedStatement statement = connection.prepareStatement(SELECT_BY_ID_SQL)) {
-            statement.setLong(1, id);
-            ResultSet resultSet = statement.executeQuery();
-            if (resultSet.next()) {
-                return prepareRoom(resultSet);
-            } else {
-                return null;
-            }
-        }
-    }
-
-    public Set<Room> getAllRoomsByStatus(Room.Status status) throws SQLException {
-        Set<Room> rooms = new HashSet<>();
-        String sql = "SELECT * FROM room WHERE status = ?";
-        try (PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setString(1, status.name());
-            ResultSet resultSet = statement.executeQuery();
-            while (resultSet.next()) {
-                rooms.add(prepareRoom(resultSet));
-            }
-        }
-        return rooms;
-    }
-
-    public void updateRoom(Room room) throws SQLException {
-        String sql = "UPDATE room SET room_number = ?, possible_livers = ?, rent_price_per_day = ?, status = ?, type = ? WHERE id = ?";
-        try (PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setInt(1, room.getRoomNumber());
-            statement.setLong(2, room.getPossibleLivers());
-            statement.setDouble(3, room.getRentPricePerDay());
-            statement.setString(4, room.getStatus().name());
-            statement.setString(5, room.getType().name());
-            statement.setLong(6, room.getId());
-            statement.executeUpdate();
-        }
-    }
-
-    public double applyRoomsForOrder(Set<Long> roomIds, Long orderId) throws SQLException {
-        String sql = "INSERT INTO order_room (order_id, room_id) VALUES (?, ?)";
-        try (PreparedStatement statement = connection.prepareStatement(sql)) {
-            double rentPerDay = 0d;
-            for (Long roomId : roomIds) {
-                Room roomToConnect = this.getRoomById(roomId);
-                if (!roomToConnect.getStatus().equals(Room.Status.FREE)) {
-                    System.out.println("Room " + roomId + " is not free. Abort!");
-                    continue;
-                }
-                rentPerDay += roomToConnect.getRentPricePerDay();
-                roomToConnect.setStatus(Room.Status.RESERVED);
-                updateRoom(roomToConnect);
-
-                statement.setLong(1, orderId);
-                statement.setLong(2, roomId);
-                statement.executeUpdate();
-                System.out.println("Room" + roomId + " is attached to Order " + orderId);
-            }
-            return rentPerDay;
-        }
-    }
-
-    public void deleteRoom(Long id) throws SQLException {
-        String sql = "DELETE FROM room WHERE id = ?";
-        try (PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setLong(1, id);
-            statement.executeUpdate();
-        }
-    }
-
-    private static Room prepareRoom(ResultSet resultSet) throws SQLException {
-        Room room = new Room();
-        room.setId(resultSet.getLong("id"));
-        room.setRoomNumber(resultSet.getInt("room_number"));
-        room.setPossibleLivers(resultSet.getLong("possible_livers"));
-        room.setRentPricePerDay(resultSet.getDouble("rent_price_per_day"));
-        room.setStatus(Room.Status.valueOf(resultSet.getString("status")));
-        room.setType(Room.Type.valueOf(resultSet.getString("type")));
+    public Room createRoom(Room room) {
+        log.debug("Creating a new Room...");
+        entityManager.getTransaction().begin();
+        entityManager.persist(room);
+        entityManager.getTransaction().commit();
+        log.info("Created a new Room with id {}", room.getId());
         return room;
     }
 
-    protected static Room prepareInject(Connection connection, Long roomId) throws SQLException {
-        try (PreparedStatement statement = connection.prepareStatement(SELECT_BY_ID_SQL)) {
-            statement.setLong(1, roomId);
-            ResultSet resultSet = statement.executeQuery();
-            if (resultSet.next()) {
-                return prepareRoom(resultSet);
-            }
-            statement.close();
-            return null;
+    public Room getRoomById(Long id) {
+        log.debug("Retrieving Room with id {}...", id);
+        Room room = entityManager.find(Room.class, id);
+        if (room != null) {
+            log.info("Retrieved Room with id {}", id);
+        } else {
+            log.warn("No Room found with id {}", id);
         }
+        return room;
+    }
+
+    public Set<Room> getAllRoomsByStatus(Room.Status status) {
+        log.debug("Retrieving all Rooms with status {}...", status);
+        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+        CriteriaQuery<Room> cq = cb.createQuery(Room.class);
+        Root<Room> room = cq.from(Room.class);
+        cq.where(cb.equal(room.get("status"), status));
+        Set<Room> rooms = entityManager.createQuery(cq).getResultStream().collect(Collectors.toSet());
+        log.info("Retrieved {} Rooms with status {}", rooms.size(), status);
+        return rooms;
+    }
+
+    public double applyRoomsForOrder(Set<Long> roomIds, Long orderId) {
+        log.debug("Applying rooms for order with id {}...", orderId);
+        double rentPerDay = 0d;
+        entityManager.getTransaction().begin();
+        for (Long roomId : roomIds) {
+            Room roomToConnect = this.getRoomById(roomId);
+            if (roomToConnect.getStatus() != Room.Status.FREE) {
+                log.warn("Room with id {} is not free. Skipping...", roomId);
+                continue;
+            }
+            rentPerDay += roomToConnect.getRentPricePerDay();
+            roomToConnect.setStatus(Room.Status.RESERVED);
+            this.updateRoom(roomToConnect);
+
+            HostelOrder order = entityManager.find(HostelOrder.class, orderId);
+            order.getRooms().add(roomToConnect);
+            entityManager.merge(order);
+
+            log.info("Room with id {} is attached to Order with id {}", roomId, orderId);
+        }
+        entityManager.getTransaction().commit();
+        return rentPerDay;
+    }
+
+
+    public void updateRoom(Room room) {
+        log.debug("Updating Room with id {}...", room.getId());
+        entityManager.getTransaction().begin();
+        entityManager.merge(room);
+        entityManager.getTransaction().commit();
+        log.info("Updated Room with id {}", room.getId());
+    }
+
+    public void deleteRoom(Long id) {
+        log.debug("Deleting Room with id {}...", id);
+        entityManager.getTransaction().begin();
+        Room room = entityManager.find(Room.class, id);
+        if (room != null) {
+            entityManager.remove(room);
+            log.info("Deleted Room with id {}", id);
+        } else {
+            log.warn("No Room found with id {}", id);
+        }
+        entityManager.getTransaction().commit();
     }
 }
-

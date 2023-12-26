@@ -2,133 +2,65 @@ package jdbc.dao;
 
 import entity.Bill;
 import entity.HostelOrder;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.logging.log4j.core.config.Order;
 
-import java.sql.*;
-import java.util.ArrayList;
-import java.util.HashSet;
+import jakarta.persistence.*;
+import jakarta.persistence.criteria.*;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
+@RequiredArgsConstructor
 @Slf4j
 public class BillDAO {
-    public final static String SELECT_BY_ID_SQL = "SELECT * FROM bill WHERE id = ?";
-    private final Connection connection;
+    private final EntityManager entityManager;
 
-    public BillDAO(Connection connection) {
-        this.connection = connection;
-    }
-
-    public Bill createBill(Bill bill) throws SQLException {
-        String sql = "INSERT INTO bill (bill_price, status) VALUES (?, ?)";
-        try (PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            prepareStatement(bill, statement);
-            int affectedRows = statement.executeUpdate();
-
-            if (affectedRows == 0) {
-                log.error("Error while creating Bill");
-                throw new SQLException("Creating order failed, no rows affected.");
-            }
-
-            try (ResultSet generatedKeys = statement.getGeneratedKeys()) {
-                if (generatedKeys.next()) {
-                    bill.setId(generatedKeys.getLong(1));
-                } else {
-                    log.error("Error while creating Bill");
-                    throw new SQLException("Creating order failed, no ID obtained.");
-                }
-            }
-        }
+    public Bill createBill(Bill bill) {
+        entityManager.getTransaction().begin();
+        entityManager.persist(bill);
+        entityManager.getTransaction().commit();
         return bill;
     }
 
-    public Bill getBillById(Long id) throws SQLException {
-        try (PreparedStatement statement = connection.prepareStatement(SELECT_BY_ID_SQL)) {
-            statement.setLong(1, id);
-            ResultSet resultSet = statement.executeQuery();
-            if (resultSet.next()) {
-                return prepareBill(resultSet);
-            } else {
-                return null;
-            }
+    public Bill getBillById(Long id) {
+        return entityManager.find(Bill.class, id);
+    }
+
+    public List<Bill> getAllBills() {
+        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+        CriteriaQuery<Bill> cq = cb.createQuery(Bill.class);
+        Root<Bill> rootEntry = cq.from(Bill.class);
+        CriteriaQuery<Bill> all = cq.select(rootEntry);
+        TypedQuery<Bill> allQuery = entityManager.createQuery(all);
+        return allQuery.getResultList();
+    }
+
+    public void updateBill(Bill bill) {
+        entityManager.getTransaction().begin();
+        entityManager.merge(bill);
+        entityManager.getTransaction().commit();
+    }
+
+    public void deleteBill(Long id) {
+        entityManager.getTransaction().begin();
+        Bill bill = entityManager.find(Bill.class, id);
+        if (bill != null) {
+            entityManager.remove(bill);
         }
+        entityManager.getTransaction().commit();
     }
 
-    public List<Bill> getAllBills() throws SQLException {
-        List<Bill> bills = new ArrayList<>();
-        String sql = "SELECT * FROM bill";
-        try (PreparedStatement statement = connection.prepareStatement(sql)) {
-            ResultSet resultSet = statement.executeQuery();
-            while (resultSet.next()) {
-                bills.add(prepareBill(resultSet));
-            }
-        }
-        return bills;
-    }
-
-    public void updateBill(Bill bill) throws SQLException {
-        String sql = "UPDATE bill SET bill_price = ?, status = ? WHERE id = ?";
-        try (PreparedStatement statement = connection.prepareStatement(sql)) {
-            prepareStatement(bill, statement);
-            statement.setLong(3, bill.getId());
-            statement.executeUpdate();
-        }
-    }
-
-    public void deleteBill(Long id) throws SQLException {
-        String sql = "DELETE FROM bill WHERE id = ?";
-        try (PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setLong(1, id);
-            statement.executeUpdate();
-        }
-    }
-
-    public Set<Bill> getAllUnpaidBills() throws SQLException {
-        Set<Bill> unpaidBills = new HashSet<>();
-        String sql = """
-                 SELECT b.*, ho.id AS hostel_order_id FROM hostel_order AS ho
-                 LEFT JOIN bill AS b on b.id = ho.bill_id
-                 WHERE ho.status = ? AND b.status = ?;
-                 """;
-        try (PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setString(1, HostelOrder.Status.APPROVED.name());
-            statement.setString(2, Bill.Status.NOT_PAYED.name());
-            ResultSet resultSet = statement.executeQuery();
-            while (resultSet.next()) {
-                unpaidBills.add(prepareBill(resultSet));
-            }
-        }
-        return unpaidBills;
-    }
-
-    private Bill prepareBill(ResultSet resultSet) throws SQLException {
-        return new Bill(
-                resultSet.getLong("id"),
-                HostelOrderDAO.prepareInject(connection, resultSet.getLong("hostel_order_id")),
-                resultSet.getDouble("bill_price"),
-                Bill.Status.valueOf(resultSet.getString("status"))
-        );
-    }
-
-    private void prepareStatement(Bill bill, PreparedStatement statement) throws SQLException {
-        statement.setDouble(1, bill.getBillPrice());
-        statement.setString(2, bill.getStatus().name());
-    }
-
-    protected static Bill prepareInject(Connection connection, Long billId) throws SQLException {
-        try (PreparedStatement statement = connection.prepareStatement(BillDAO.SELECT_BY_ID_SQL)) {
-            statement.setLong(1, billId);
-            ResultSet resultSet = statement.executeQuery();
-            if (resultSet.next()) {
-                return new Bill(
-                        resultSet.getLong("id"),
-                        null,
-                        resultSet.getDouble("bill_price"),
-                        Bill.Status.valueOf(resultSet.getString("status"))
-                );
-            }
-            return null;
-        }
+    public Set<Bill> getAllUnpaidBills() {
+        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+        CriteriaQuery<Bill> cq = cb.createQuery(Bill.class);
+        Root<Bill> bill = cq.from(Bill.class);
+        Join<Bill, HostelOrder> order = bill.join("hostelOrder");
+        cq.where(cb.and(
+                cb.equal(order.get("status"), HostelOrder.Status.APPROVED),
+                cb.equal(bill.get("status"), Bill.Status.NOT_PAYED)
+        ));
+        return entityManager.createQuery(cq).getResultStream().collect(Collectors.toSet());
     }
 }
