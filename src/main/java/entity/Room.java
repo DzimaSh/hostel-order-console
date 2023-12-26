@@ -30,16 +30,21 @@ public class Room extends BaseEntity {
         OCCUPIED
     }
 
+    @Column(name = "room_number")
     private Integer roomNumber;
 
+    @Column(name = "possible_livers")
     private Long possibleLivers;
 
+    @Column(name = "rent_price_per_day")
     private Double rentPricePerDay;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "status")
     private Status status;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "type")
     private Type type;
 
     @ToString.Exclude

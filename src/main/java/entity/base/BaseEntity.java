@@ -13,5 +13,6 @@ public abstract class BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "default_seq")
+    @Column(name = "id")
     protected Long id;
 }

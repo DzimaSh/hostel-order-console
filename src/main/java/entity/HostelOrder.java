@@ -48,11 +48,14 @@ public class HostelOrder extends DateRangeEntity {
     private Bill bill;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "desired_room_type")
     private Room.Type desiredRoomType;
 
+    @Column(name = "desired_beds")
     private Integer desiredBeds;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "status")
     private Status status;
 
     public HostelOrder(Long id,

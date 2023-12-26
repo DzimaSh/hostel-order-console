@@ -25,9 +25,11 @@ public class Bill extends BaseEntity {
     @ToString.Exclude
     private HostelOrder hostelOrder;
 
+    @Column(name = "bill_price")
     private Double billPrice = -1d;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "status")
     private Status status = Status.NOT_PAYED;
 
     public Bill(Long id, HostelOrder hostelOrder, Double billPrice, Status status) {

@@ -23,14 +23,17 @@ public class HostelUser extends BaseEntity {
         USER
     }
 
+    @Column(name = "name")
     private String name;
 
-    @Column(unique = true)
+    @Column(unique = true, name = "email")
     private String email;
 
+    @Column(name = "password")
     private String password;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "authority")
     private Authority authority;
 
     @ToString.Exclude
