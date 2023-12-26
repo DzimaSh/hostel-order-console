@@ -365,6 +365,8 @@ public class HostelManager {
     private void seeOpenOrders() throws SQLException {
         log.debug("Request to see open orders...");
 
+        adminCheck();
+
         List<HostelOrder> openOrders = hostelOrderDAO.getAllOpenedHostelOrders();
         if (openOrders.isEmpty()) {
             System.out.println("All orders are approved!");
