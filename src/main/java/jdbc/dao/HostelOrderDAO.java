@@ -3,10 +3,12 @@ package jdbc.dao;
 import entity.Bill;
 import entity.HostelOrder;
 import entity.Room;
+import entity.comparator.HostelOrderComparator;
 import lombok.extern.slf4j.Slf4j;
 
 import java.sql.*;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class HostelOrderDAO {
@@ -69,7 +71,9 @@ public class HostelOrderDAO {
                 orders.add(prepareHostelOrder(resultSet));
             }
         }
-        return orders;
+        return orders.stream()
+                .sorted(new HostelOrderComparator())
+                .toList();
     }
 
     public List<HostelOrder> getAllHostelOrdersByUser(Long userId) throws SQLException {
