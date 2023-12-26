@@ -59,10 +59,11 @@ public class HostelOrderDAO {
         }
     }
 
-    public List<HostelOrder> getAllHostelOrders() throws SQLException {
+    public List<HostelOrder> getAllOpenedHostelOrders() throws SQLException {
         List<HostelOrder> orders = new ArrayList<>();
-        String sql = "SELECT * FROM hostel_order";
+        String sql = "SELECT * FROM hostel_order WHERE status = ?";
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, HostelOrder.Status.OPEN.name());
             ResultSet resultSet = statement.executeQuery();
             while (resultSet.next()) {
                 orders.add(prepareHostelOrder(resultSet));

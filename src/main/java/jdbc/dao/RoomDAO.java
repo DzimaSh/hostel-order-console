@@ -69,6 +69,29 @@ public class RoomDAO {
         }
     }
 
+    public double applyRoomsForOrder(Set<Long> roomIds, Long orderId) throws SQLException {
+        String sql = "INSERT INTO order_room (order_id, room_id) VALUES (?, ?)";
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            double rentPerDay = 0d;
+            for (Long roomId : roomIds) {
+                Room roomToConnect = this.getRoomById(roomId);
+                if (!roomToConnect.getStatus().equals(Room.Status.FREE)) {
+                    System.out.println("Room " + roomId + " is not free. Abort!");
+                    continue;
+                }
+                rentPerDay += roomToConnect.getRentPricePerDay();
+                roomToConnect.setStatus(Room.Status.RESERVED);
+                updateRoom(roomToConnect);
+
+                statement.setLong(1, orderId);
+                statement.setLong(2, roomId);
+                statement.executeUpdate();
+                System.out.println("Room" + roomId + " is attached to Order " + orderId);
+            }
+            return rentPerDay;
+        }
+    }
+
     public void deleteRoom(Long id) throws SQLException {
         String sql = "DELETE FROM room WHERE id = ?";
         try (PreparedStatement statement = connection.prepareStatement(sql)) {

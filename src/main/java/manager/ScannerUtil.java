@@ -20,32 +20,38 @@ public class ScannerUtil {
     }
 
     public static Integer scanInteger() {
-        if (scanner.hasNextInt()) {
-            int value = scanner.nextInt();
+        try {
+            if (scanner.hasNextInt()) {
+                return scanner.nextInt();
+            } else {
+                throw error("Expected an integer.");
+            }
+        } finally {
             scanner.nextLine();
-            return value;
-        } else {
-            throw error("Expected an integer.");
         }
     }
 
     public static Long scanLong() {
-        if (scanner.hasNextLong()) {
-            long value = scanner.nextLong();
+        try {
+            if (scanner.hasNextLong()) {
+                return scanner.nextLong();
+            } else {
+                throw error("Expected a long.");
+            }
+        } finally {
             scanner.nextLine();
-            return value;
-        } else {
-            throw error("Expected a long.");
         }
     }
 
     public static Double scanDouble() {
-        if (scanner.hasNextDouble()) {
-            double value = scanner.nextDouble();
+        try {
+            if (scanner.hasNextDouble()) {
+                return scanner.nextDouble();
+            } else {
+                throw error("Expected a double.");
+            }
+        } finally {
             scanner.nextLine();
-            return value;
-        } else {
-            throw error("Expected a double.");
         }
     }
 

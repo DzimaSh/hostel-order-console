@@ -57,7 +57,7 @@ public class HostelOrder extends DateRangeEntity {
         String roomDetails = "\tNot available till approve";
         String billDetails = "\tNot available till approve";
 
-        if (status == Status.APPROVED) {
+        if (status.ordinal() >= Status.APPROVED.ordinal()) {
             roomDetails = rooms.isEmpty()
                     ? "\tNo rooms assigned"
                     : rooms.stream()

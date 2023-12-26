@@ -14,6 +14,7 @@ import security.SecurityHolder;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -84,11 +85,17 @@ public class HostelManager {
                 case 4:
                     createNewOrder();
                     break;
+                case 5:
+                    approveOrder();
+                    break;
                 case 6:
                     viewUnpaidBills();
                     break;
                 case 7:
                     seeFreeRooms();
+                    break;
+                case 8:
+                    seeOpenOrders();
                     break;
                 case 0:
                     logout();
@@ -99,9 +106,11 @@ public class HostelManager {
             }
         } catch (IllegalStateException e) {
             System.out.println(e.getMessage());
+        } catch (DateTimeParseException | InputMismatchException | IllegalArgumentException e) {
+            System.out.println("Invalid input!");
         }
         System.out.println("Press Enter to proceed...");
-        scanner.nextLine();
+        scanLine();
     }
 
     private boolean loginMenu(int choice) throws SQLException {
@@ -136,6 +145,7 @@ public class HostelManager {
                 5) Approve order
                 6) View unpaid bills
                 7) See free rooms
+                8) See open orders
                 """;
 
         System.out.printf(
@@ -259,6 +269,9 @@ public class HostelManager {
 
         orderToPay.setStatus(HostelOrder.Status.PAYED);
         hostelOrderDAO.updateHostelOrder(orderToPay);
+        Bill payedBill = orderToPay.getBill();
+        payedBill.setStatus(Bill.Status.PAYED);
+        billDAO.updateBill(payedBill);
         System.out.println("Nice! You have payed your order:)");
 
 
@@ -306,22 +319,64 @@ public class HostelManager {
         log.debug(unpaidBills.size() + " unpaid bills fetched");
     }
 
-    private void closeOrder() throws SQLException {
-        log.info("Enter order ID to close:");
-        Long orderIdToClose = scanner.nextLong();
-        HostelOrder orderToClose = hostelOrderDAO.getHostelOrderById(orderIdToClose);
-        orderToClose.setStatus(HostelOrder.Status.CLOSED);
-        hostelOrderDAO.updateHostelOrder(orderToClose);
-        log.info("Order closed.");
-    }
-
     private void approveOrder() throws SQLException {
-        log.info("Enter order ID to approve:");
+        log.info("Approving order...");
+
+        adminCheck();
+
+        System.out.println("Enter order ID to approve:");
         Long orderId = scanner.nextLong();
+
         HostelOrder orderToApprove = hostelOrderDAO.getHostelOrderById(orderId);
+        if (Objects.isNull(orderToApprove)) {
+            throw new IllegalStateException("Order with id " + orderId + " not found!");
+        }
+        if (orderToApprove.getStatus().equals(HostelOrder.Status.APPROVED)) {
+            log.debug("Attempt to approve approved order...");
+            throw new IllegalStateException("Order is already approved!");
+        }
+
+        System.out.println("Input room ids to attach. Input 'done' when finished.");
+        Set<Long> roomIds = new HashSet<>();
+        while (true) {
+            String input = scanner.next();
+            if (input.equalsIgnoreCase("done")) {
+                break;
+            }
+            try {
+                Long roomId = Long.parseLong(input);
+                roomIds.add(roomId);
+            } catch (NumberFormatException e) {
+                System.out.println("Invalid input. Please enter a valid room id or 'done' to finish.");
+            }
+        }
+        double rentPerDay = roomDAO.applyRoomsForOrder(roomIds, orderId);
+        Bill bill = orderToApprove.getBill();
+        bill.setBillPrice(rentPerDay * orderToApprove.countPeriodOfOrder());
+        billDAO.updateBill(bill);
+
         orderToApprove.setStatus(HostelOrder.Status.APPROVED);
         hostelOrderDAO.updateHostelOrder(orderToApprove);
-        log.info("Order approved.");
+        System.out.println("Order " + orderId + " approved.");
+
+        log.info("Order " + orderId + " approved.");
+    }
+
+    private void seeOpenOrders() throws SQLException {
+        log.debug("Request to see open orders...");
+
+        List<HostelOrder> openOrders = hostelOrderDAO.getAllOpenedHostelOrders();
+        if (openOrders.isEmpty()) {
+            System.out.println("All orders are approved!");
+        } else {
+            String ordersDetails = openOrders.stream()
+                    .map(order -> "\t" + order.details().replace("\n", "\n\t"))
+                    .collect(Collectors.joining("\n"));
+            System.out.println("You have " + openOrders.size() + " orders to be approved: ");
+            System.out.println(ordersDetails);
+        }
+
+        log.debug("Retrieved " + openOrders.size() + " open orders!");
     }
 
     private void adminCheck() {
