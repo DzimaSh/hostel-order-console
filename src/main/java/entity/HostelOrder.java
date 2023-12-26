@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
 @Entity
 @Table(name = "hostel_order")
 @SequenceGenerator(
-        name = "default_seq",
+        name = "hostel_order_seq",
         sequenceName = "hostel_order_seq",
         allocationSize = 1
 )

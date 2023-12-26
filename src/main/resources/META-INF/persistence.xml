@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<persistence version="2.2"
+             xmlns="http://xmlns.jcp.org/xml/ns/persistence"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/persistence
+             http://xmlns.jcp.org/xml/ns/persistence/persistence_2_2.xsd">
+    <persistence-unit name="hostel-order-persistence-unit" transaction-type="RESOURCE_LOCAL">
+        <description>Hostel-order-persistence</description>
+
+        <provider>org.eclipse.persistence.jpa.PersistenceProvider</provider>
+
+        <class>entity.Bill</class>
+        <class>entity.HostelOrder</class>
+        <class>entity.HostelUser</class>
+        <class>entity.Room</class>
+
+        <properties>
+            <property name="jakarta.persistence.jdbc.driver" value="org.postgresql.Driver"/>
+            <property name="jakarta.persistence.jdbc.url" value="jdbc:postgresql://localhost:5432/hostel-order"/>
+            <property name="jakarta.persistence.jdbc.user" value="postgres"/>
+            <property name="jakarta.persistence.jdbc.password" value="shushkevich"/>
+
+
+            <property name="hibernate.show_sql" value="true"/>
+            <property name="hibernate.hbm2ddl.auto" value="update"/>
+            <property name="eclipselink.ddl-generation" value="create-tables"/>
+            <property name="eclipselink.metamodel-generation" value="canonical"/>
+        </properties>
+    </persistence-unit>
+</persistence>

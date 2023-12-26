@@ -4,6 +4,7 @@ import entity.Bill;
 import entity.HostelOrder;
 import entity.HostelUser;
 import entity.Room;
+import jakarta.persistence.EntityManager;
 import jdbc.dao.BillDAO;
 import jdbc.dao.HostelOrderDAO;
 import jdbc.dao.HostelUserDAO;
@@ -30,11 +31,11 @@ public class HostelManager {
     private final Scanner scanner;
     private final SecurityHolder securityHolder;
 
-    public HostelManager(Connection connection, Scanner scanner) {
-        this.hostelUserDAO = new HostelUserDAO(connection);
-        this.roomDAO = new RoomDAO(connection);
-        this.hostelOrderDAO = new HostelOrderDAO(connection);
-        this.billDAO = new BillDAO(connection);
+    public HostelManager(EntityManager entityManager, Scanner scanner) {
+        this.hostelUserDAO = new HostelUserDAO(entityManager);
+        this.roomDAO = new RoomDAO(entityManager);
+        this.hostelOrderDAO = new HostelOrderDAO(entityManager);
+        this.billDAO = new BillDAO(entityManager);
 
         this.scanner = scanner;
         this.securityHolder = new SecurityHolder(hostelUserDAO);

@@ -38,13 +38,19 @@ public class HostelOrderDAO {
 
     public List<HostelOrder> getAllOpenedHostelOrders() {
         log.debug("Retrieving all opened HostelOrders...");
-        TypedQuery<HostelOrder> query = entityManager.createQuery(
-                "SELECT o FROM HostelOrder o WHERE o.status = :status", HostelOrder.class);
-        query.setParameter("status", HostelOrder.Status.OPEN);
+
+        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+        CriteriaQuery<HostelOrder> cq = cb.createQuery(HostelOrder.class);
+        Root<HostelOrder> orderRoot = cq.from(HostelOrder.class);
+        cq.where(cb.equal(orderRoot.get("status"), HostelOrder.Status.OPEN));
+
+        TypedQuery<HostelOrder> query = entityManager.createQuery(cq);
         List<HostelOrder> orders = query.getResultList();
+
         log.info("Retrieved {} opened HostelOrders", orders.size());
         return orders;
     }
+
 
     public List<HostelOrder> getAllHostelOrdersByUser(Long userId) {
         log.debug("Retrieving all HostelOrders for user with id {}...", userId);

@@ -12,7 +12,7 @@ import java.util.Set;
 @Entity
 @Table(name = "hostel_user")
 @SequenceGenerator(
-        name = "default_seq",
+        name = "hostel_user_seq",
         sequenceName = "hostel_user_seq",
         allocationSize = 1
 )

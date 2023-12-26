@@ -10,7 +10,7 @@ import lombok.*;
 @Table(name = "bill")
 @Entity
 @SequenceGenerator(
-        name = "default_seq",
+        name = "bill_seq",
         sequenceName = "bill_seq",
         allocationSize = 1
 )

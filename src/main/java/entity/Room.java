@@ -13,7 +13,7 @@ import java.util.Set;
 @Entity
 @Table(name = "room")
 @SequenceGenerator(
-        name = "default_seq",
+        name = "room_seq",
         sequenceName = "room_seq",
         allocationSize = 1
 )
